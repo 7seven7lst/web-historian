@@ -8,60 +8,65 @@ var helpers=require('../web/http-helpers');
 
 
   var getSite = function(request, response){
+
     var myUrl=request.url.slice(1);
+
+    if( myUrl === "" ){
+      helpers.serveAssets(response,  path.join(__dirname, "public/index.html"), 200);
+      return;
+    }
+
+    if(myUrl.split(".").length < 3 || myUrl.split(".")[0] !== "www"){
+      helpers.serveAssets(response, '404 - This page does not exist \n <a href="http://localhost:8080">Go Back</a>', 404);
+      return;
+    }
+
     console.log("GET: ", myUrl);
   	archive.isUrlInList(myUrl, function(listed){
   		if(listed){
         archive.isUrlArchived(myUrl, function(archived){
           if(archived){
-            //send our archived page
+
             console.log("Now serving our archived version of ", myUrl);
             helpers.serveAssets(response,  path.join(__dirname, "../archives/sites/" + myUrl), 200);
+            return;
           }else{
-            //send our loading page
+
             console.log("Now serving our loading page...");
             helpers.serveAssets(response,  path.join(__dirname, "public/loading.html"), 404);
+            return;
           }
         });
   		}else{
-        // Start saving the page here
-        console.log("Now serving our 404 page...");
-        helpers.serveAssets(response, path.join(__dirname,"public/loading.html"), 404);
+        setSite(response, myUrl);
+        console.log("Now serving our loading page...");
+        helpers.serveAssets(response,  path.join(__dirname, "public/loading.html"), 302);
+        return;
   		}
   	});
   }
 
-  var setSite = function(request, response){
-  	helpers.collectData(request, function(message){
-      console.log("POST:", message);
-      archive.isUrlArchived(message, function(archived){
-        if(archived){
-          //send our archived page
-          //console.log("Now serving our archived version of ", myUrl);
-          helpers.serveAssets(response,  path.join(__dirname, "../archives/sites/" + message), 200);
-        }else{
-          archive.addUrlToList(message, function(){
-            helpers.serveAssets(response,  path.join(__dirname, "public/loading.html"), 302);
-            archive.downloadUrls([message]);
-          });
-        }
-      })
-
-  	}); 	
+  var setSite = function(response, message){
+    archive.isUrlArchived(message, function(archived){
+      if(!archived){
+        archive.addUrlToList(message, function(){
+          archive.downloadUrls([message]);
+        });
+        return;
+      }
+    });
   }
 
 //what runs whenever a request comes in
-exports.handleRequest = function (req, res) {
+exports.handleRequest = function (request, response) {
 
-	if(req.method === 'POST'){
-		setSite(req, res);
-		return;
-	}else if( url.parse(req.url).pathname === "/" ){
-		helpers.serveAssets(res,  path.join(__dirname, "public/index.html"), 200);
-		return;
+	if(request.method === 'POST'){
+    helpers.collectData(request, response, function(response, url){
+      request.url = "/" + url;
+      getSite(request, response);
+    });
 	}else{
-    console.log("getting site...")
-		getSite(req, res);
-	}
-	
+		getSite(request, response);
+  }
+
 };
