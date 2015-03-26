@@ -46,26 +46,29 @@ exports.isUrlInList = function(url, callback){
   exports.readListOfUrls(function(data){
   	if (Array.isArray(data)){
   		for(var i = 0; i<data.length; i++){
+        console.log("Checking for url: ", url, " In the list: ", data, "...");
         if(data[i] === url){
+          console.log("The url is in the list!");
         	callback(true);
         	return;
         }
   		}
-  		callback(false);
-  	} else {
-  		callback(false);
-  	}
+    }
+    console.log("The url is not on the list!");
+  	callback(false);
   });
 };
 
 exports.addUrlToList = function(url, callback){
   //fs.write to list file
+  console.log("adding ", url, " to our sites.txt...")
   url = url+"\n";
   callback = callback || function(){};
   fs.appendFile(exports.paths.list, url,function (err){
   	if (err){
   		callback(err);
   	}else{
+      console.log("Successfully added ", url, " to our sites.txt!")
   		callback(null);
   	}
   });
@@ -74,11 +77,14 @@ exports.addUrlToList = function(url, callback){
 exports.isUrlArchived = function(url, callback){
   //look for the downloaded html file in archivedSites path
   callback = callback || function(){};
+  console.log("Checking if ", url, " has been archived...")
   fs.open(path.join(exports.paths.archivedSites, url), 'r', function(err){
   	if (err){
-  		callback(true);
-  	} else {
+      console.log(url, " has not been archived!");
   		callback(false);
+  	} else {
+      console.log(url, " has already been archived!");
+  		callback(true);
   	}
   })
 
@@ -87,76 +93,26 @@ exports.isUrlArchived = function(url, callback){
 
 exports.downloadUrls = function(array, callback){
 	//send a get request to a url, and save the results
+  console.log("downloading urls: ", array);
 	callback = callback || function(){};
 	for (var i=0; i<array.length; i++){
-	  request.get('http://' + array[i], function(err, data){
-			if (err) {
-				callback(err);
-			}
-			else {
-		    fs.writeFile(path.join(exports.paths.archivedSites, data.request.uri.host), data.body,function(err){
-		    	if(err){
-		    		callback(err);
-		    	}else{
-				    callback(null, true);	
-		    	}
-		    });
-			}
-	  });
+    (function(i){
+  	  request.get('http://' + array[i], function(err, data){
+  			if (err) {
+  				callback(err);
+  			}
+  			else {
+  		    fs.writeFile(path.join(exports.paths.archivedSites, array[i]), data.body,function(err){
+  		    	if(err){
+  		    		callback(err);
+  		    	}else{
+              console.log("completed saving the site: ", array[i]);
+  				    callback(null, true);	
+  		    	}
+  		    });
+  			}
+  	  });
+    })(i);
 	}
 };
 
-
-
-
-
-
-
-/*
-exports.downloadUrl = function(url, callback){
-  //send a get request to a url, and save the results
-  callback = callback || function(){};
-  var urlName = url.replace(/\./g, '_') + '.html';
-  request.get(url, function(err, data){
-  	if (err) {
-  		callback(err);
-  	}
-  	else {
-      fs.writeFile(path.join(exports.paths.archivedSites, urlName), function(err){
-      	if(err){
-      		callback(err);
-      	}else{
-  		  callback(null, true);	
-      	}
-      });
-  	}
-  });
-};
-
-exports.downloadUrls = function(callback){
-  // list = readFile(list).split("  ");
-  callback = callback || function(){};
-  fs.readFile(exports.paths.list, 'utf8', function(err, data){
-  	if (err){
-  		callback(err);
-  	}
-  	else {
-  		var list = data.split("\n");
-
-  		for (var i=0; i<list.length; i++){
-
-  			exports.isUrlArchived(list[i], function(url){
-  				if(url){
-  					exports.downloadUrl(url);
-  				}
-  			});
-
-  		}
-  	}
-  })
-    // iterate through
-    // isUrlArchived?
-      // yes - do nothing
-      // no - downloadUrl(url);
-};
-*/

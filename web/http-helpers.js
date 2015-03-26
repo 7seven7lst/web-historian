@@ -28,8 +28,9 @@ exports.collectData=function(request, callback){
 	request.on('data', function(chunk){
 		data+=chunk;
 	});
-	request.on('end', function(){
-		callback(JSON.parse(data))
+	request.on('end', function(){   
+    data=data.substr(4);
+		callback(data);
 	});
 };
 
