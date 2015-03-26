@@ -1,6 +1,7 @@
 var fs = require('fs');
 var path = require('path');
 var _ = require('underscore');
+var request = require('request');
 
 /*
  * You will need to reuse the same paths many times over in the course of this sprint.
@@ -25,17 +26,137 @@ exports.initialize = function(pathsObj){
 // The following function names are provided to you to suggest how you might
 // modularize your code. Keep it clean!
 
-exports.readListOfUrls = function(){
+exports.readListOfUrls = function(callback){
+  //fs.read the list file
+  callback = callback || function(){};
+  fs.readFile(exports.paths.list, 'utf8',function(err, data){
+  	if (err) {
+  		callback(err);
+  	}
+  	else {
+  		data = data.split('\n');
+  		callback(data);
+  	}
+  });
 };
 
-exports.isUrlInList = function(){
+exports.isUrlInList = function(url, callback){
+  //readlistofurls
+  callback = callback || function(){};
+  exports.readListOfUrls(function(data){
+  	if (Array.isArray(data)){
+  		for(var i = 0; i<data.length; i++){
+        if(data[i] === url){
+        	callback(true);
+        	return;
+        }
+  		}
+  		callback(false);
+  	} else {
+  		callback(false);
+  	}
+  });
 };
 
-exports.addUrlToList = function(){
+exports.addUrlToList = function(url, callback){
+  //fs.write to list file
+  url = url+"\n";
+  callback = callback || function(){};
+  fs.appendFile(exports.paths.list, url,function (err){
+  	if (err){
+  		callback(err);
+  	}else{
+  		callback(null);
+  	}
+  });
 };
 
-exports.isUrlArchived = function(){
+exports.isUrlArchived = function(url, callback){
+  //look for the downloaded html file in archivedSites path
+  callback = callback || function(){};
+  fs.open(path.join(exports.paths.archivedSites, url), 'r', function(err){
+  	if (err){
+  		callback(true);
+  	} else {
+  		callback(false);
+  	}
+  })
+
 };
 
-exports.downloadUrls = function(){
+
+exports.downloadUrls = function(array, callback){
+	//send a get request to a url, and save the results
+	callback = callback || function(){};
+	for (var i=0; i<array.length; i++){
+	  request.get('http://' + array[i], function(err, data){
+			if (err) {
+				callback(err);
+			}
+			else {
+		    fs.writeFile(path.join(exports.paths.archivedSites, data.request.uri.host), data.body,function(err){
+		    	if(err){
+		    		callback(err);
+		    	}else{
+				    callback(null, true);	
+		    	}
+		    });
+			}
+	  });
+	}
 };
+
+
+
+
+
+
+
+/*
+exports.downloadUrl = function(url, callback){
+  //send a get request to a url, and save the results
+  callback = callback || function(){};
+  var urlName = url.replace(/\./g, '_') + '.html';
+  request.get(url, function(err, data){
+  	if (err) {
+  		callback(err);
+  	}
+  	else {
+      fs.writeFile(path.join(exports.paths.archivedSites, urlName), function(err){
+      	if(err){
+      		callback(err);
+      	}else{
+  		  callback(null, true);	
+      	}
+      });
+  	}
+  });
+};
+
+exports.downloadUrls = function(callback){
+  // list = readFile(list).split("  ");
+  callback = callback || function(){};
+  fs.readFile(exports.paths.list, 'utf8', function(err, data){
+  	if (err){
+  		callback(err);
+  	}
+  	else {
+  		var list = data.split("\n");
+
+  		for (var i=0; i<list.length; i++){
+
+  			exports.isUrlArchived(list[i], function(url){
+  				if(url){
+  					exports.downloadUrl(url);
+  				}
+  			});
+
+  		}
+  	}
+  })
+    // iterate through
+    // isUrlArchived?
+      // yes - do nothing
+      // no - downloadUrl(url);
+};
+*/
